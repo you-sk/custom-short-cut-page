@@ -26,15 +26,14 @@
         .shortcut-card.drag-over {
             border: 2px dashed #3b82f6; /* Tailwindのblue-500 */
         }
-        .icon-placeholder {
-            width: 40px;
-            height: 40px;
-            border-radius: 0.5rem; /* Tailwindのrounded-lg */
+        /* アイコンプレースホルダーのスタイル */
+        .icon-placeholder-display { /* 新しいクラス名 */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem; /* Tailwindのtext-2xl */
             color: white;
+            /* サイズはJS側でTailwindクラスを使って指定 */
+            /* 角丸はJS側で削除 */
         }
         .action-btn-container {
             position: absolute;
@@ -151,7 +150,7 @@
     <div id="addShortcutModal" class="modal">
         <div class="modal-content bg-white p-6 rounded-lg shadow-xl">
             <span class="close-btn" id="closeAddModalBtn">&times;</span>
-            <h2 class="text-xl sm:text-2xl font-semibold mb-6 text-gray-700">新しいショートカット</h2>
+            <h2 class="text-xl sm:text-2xl font-semibold mb-6 text-gray-700 text-center">新しいショートカット</h2>
             <form id="addShortcutForm">
                 <div class="mb-4">
                     <label for="addSiteName" class="block text-gray-700 text-sm font-bold mb-2">サイト名:</label>
@@ -174,7 +173,7 @@
     <div id="editShortcutModal" class="modal">
         <div class="modal-content bg-white p-6 rounded-lg shadow-xl">
             <span class="close-btn" id="closeEditModalBtn">&times;</span>
-            <h2 class="text-xl sm:text-2xl font-semibold mb-6 text-gray-700">ショートカットを編集</h2>
+            <h2 class="text-xl sm:text-2xl font-semibold mb-6 text-gray-700 text-center">ショートカットを編集</h2>
             <form id="editShortcutForm">
                 <input type="hidden" id="editShortcutIndex">
                 <div class="mb-4">
@@ -268,7 +267,9 @@
             editShortcutForm.reset();
         };
 
-        // モーダル外クリックで閉じる
+        // モーダル外クリックで閉じないように変更
+        // window.onclick のイベントリスナーをコメントアウトまたは削除
+        /*
         window.onclick = (event) => {
             if (event.target == addShortcutModal) {
                 addShortcutModal.style.display = "none";
@@ -279,6 +280,7 @@
                 editShortcutForm.reset();
             }
         };
+        */
 
         function getShortcuts() {
             try {
@@ -313,8 +315,13 @@
 
                 const bgColor = getBackgroundColor(shortcut.name);
                 const initial = shortcut.name.charAt(0).toUpperCase();
+                
+                const tempIconContainer = document.createElement('div');
+                tempIconContainer.className = "flex justify-center items-center w-full mb-2 sm:mb-3";
+
                 const iconPlaceholder = document.createElement('div');
-                iconPlaceholder.className = `icon-placeholder mb-2 sm:mb-3 ${bgColor}`;
+                // アイコンプレースホルダーのクラス: CSSで基本スタイル、JSでサイズと背景色を指定 (角丸は削除)
+                iconPlaceholder.className = `icon-placeholder-display w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl ${bgColor}`;
                 iconPlaceholder.textContent = initial;
                 
                 const favicon = document.createElement('img');
@@ -322,31 +329,33 @@
                     const domainUrl = new URL(shortcut.url);
                     favicon.src = `https://www.google.com/s2/favicons?domain=${domainUrl.hostname}&sz=64`;
                 } catch (e) {
-                    favicon.src = `https://placehold.co/64x64/cccccc/969696?text=Err`; // Placeholder for invalid URL
-                    console.warn("Invalid URL for favicon:", shortcut.url);
+                    const colorName = bgColor.replace('bg-', '').replace('-400', '');
+                    favicon.src = `https://placehold.co/64x64/${colorName}/white?text=${initial}`;
+                    console.warn("Invalid URL for favicon, using placeholder:", shortcut.url);
                 }
-                favicon.alt = "Favicon";
-                favicon.className = "w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-2 sm:mb-3 object-contain";
+                favicon.alt = shortcut.name || "Site Icon";
+                // ファビコンのクラス: サイズ、オブジェクトフィットを指定 (角丸は削除)
+                favicon.className = "w-8 h-8 sm:w-10 sm:h-10 object-contain";
                 
                 let iconDisplayed = false;
-                const tempIconContainer = document.createElement('div'); //一時的なコンテナ
 
                 favicon.onload = () => {
-                    if (!iconDisplayed) {
-                        tempIconContainer.innerHTML = ''; // プレースホルダーをクリア
+                    if (!iconDisplayed && card.contains(tempIconContainer)) {
+                        tempIconContainer.innerHTML = ''; 
                         tempIconContainer.appendChild(favicon);
                         iconDisplayed = true;
                     }
                 };
                 favicon.onerror = () => {
-                    if (!iconDisplayed) {
-                        tempIconContainer.innerHTML = ''; // imgをクリア
-                        tempIconContainer.appendChild(iconPlaceholder);
+                    if (!iconDisplayed && card.contains(tempIconContainer)) {
+                        tempIconContainer.innerHTML = '';
+                        tempIconContainer.appendChild(iconPlaceholder); // エラー時はプレースホルダーを使用
                         iconDisplayed = true;
                     }
                 };
-                // 初期はプレースホルダーをセットし、ロード成功/失敗で置き換える
-                tempIconContainer.appendChild(iconPlaceholder); 
+                
+                tempIconContainer.appendChild(iconPlaceholder); // 初期表示はプレースホルダー
+                
                 card.appendChild(tempIconContainer);
 
 
@@ -355,11 +364,9 @@
                 nameElement.textContent = shortcut.name;
                 card.appendChild(nameElement);
 
-                // アクションボタンコンテナ
                 const actionBtnContainer = document.createElement('div');
                 actionBtnContainer.className = 'action-btn-container';
 
-                // 編集ボタン
                 const editBtn = document.createElement('button');
                 editBtn.className = 'action-btn edit';
                 editBtn.innerHTML = '<i class="fas fa-pencil-alt text-xs"></i>';
@@ -371,7 +378,6 @@
                 };
                 actionBtnContainer.appendChild(editBtn);
 
-                // 削除ボタン
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'action-btn delete';
                 deleteBtn.innerHTML = '<i class="fas fa-times text-xs"></i>';
@@ -396,7 +402,7 @@
                 'bg-orange-400'
             ];
             let hash = 0;
-            if (name) { // nameがundefinedやnullでないことを確認
+            if (name) {
                 for (let i = 0; i < name.length; i++) {
                     hash = name.charCodeAt(i) + ((hash << 5) - hash);
                 }
@@ -409,7 +415,6 @@
             container.innerHTML = `<p class="text-red-500 text-xs italic">${message}</p>`;
         }
 
-        // 新規ショートカット追加処理
         addShortcutForm.addEventListener('submit', (e) => {
             e.preventDefault();
             addFormErrorMessageContainer.innerHTML = '';
@@ -442,7 +447,6 @@
             }
         });
 
-        // ショートカット編集処理
         editShortcutForm.addEventListener('submit', (e) => {
             e.preventDefault();
             editFormErrorMessageContainer.innerHTML = '';
@@ -463,7 +467,6 @@
 
             if (name && url && !isNaN(index)) {
                 const shortcuts = getShortcuts();
-                // 自分自身以外のURLと重複チェック
                 if (shortcuts.some((s, i) => s.url === url && i !== index)) {
                      displayFormError(editFormErrorMessageContainer, 'このURLは他のショートカットで既に使用されています。');
                     return;
