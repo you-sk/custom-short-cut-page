@@ -296,11 +296,19 @@
             localStorage.setItem('shortcuts', JSON.stringify(shortcuts));
         }
 
+function getFaviconUrls(domain) {
+    return [
+        `https://${domain}/favicon.ico`,
+        `https://${domain}/apple-touch-icon.png`,
+        `https://${domain}/apple-touch-icon-precomposed.png`,
+    ];
+}
+
 function createFaviconElement(shortcut) {
     const container = document.createElement('div');
     container.className = "flex justify-center items-center w-full mb-2 sm:mb-3";
 
-    // まず最初にプレースホルダーを作成して表示
+    // プレースホルダーを作成
     const initial = shortcut.name.charAt(0).toUpperCase();
     const bgColor = getBackgroundColor(shortcut.name);
     const placeholder = document.createElement('div');
@@ -310,68 +318,83 @@ function createFaviconElement(shortcut) {
     // プレースホルダーを表示
     container.appendChild(placeholder);
 
+    // フラグを追加して、ファビコンが正常に読み込まれたかを追跡
+    let faviconLoaded = false;
+
     try {
         const domainUrl = new URL(shortcut.url);
         const faviconUrls = getFaviconUrls(domainUrl.hostname);
         
-        // 各ファビコンURLを順番に試す
-        const tryFaviconSequentially = async () => {
+        const tryFavicon = async (url) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let timeout = setTimeout(() => {
+                    reject(new Error('Timeout'));
+                }, 5000); // 5秒タイムアウト
+
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    if (img.width > 1 && img.height > 1 && !url.includes('404')) {
+                        resolve(url);
+                    } else {
+                        reject(new Error('Invalid favicon'));
+                    }
+                };
+                
+                img.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error('Failed to load'));
+                };
+
+                img.src = url;
+            });
+        };
+
+        // すべてのURLを順番に試す
+        const tryAllFavicons = async () => {
             for (const url of faviconUrls) {
                 try {
-                    const success = await new Promise((resolve, reject) => {
-                        const img = new Image();
+                    const validUrl = await tryFavicon(url);
+                    if (!faviconLoaded) { // 既に成功していない場合のみ
+                        const faviconDiv = document.createElement('div');
+                        faviconDiv.className = "w-8 h-8 sm:w-10 sm:h-10 bg-contain bg-center bg-no-repeat";
+                        faviconDiv.style.backgroundImage = `url('${validUrl}')`;
                         
-                        img.onload = () => {
-                            if (img.width > 1 && img.height > 1) {
-                                // 有効なファビコンが見つかった場合
-                                const faviconDiv = document.createElement('div');
-                                faviconDiv.className = "w-8 h-8 sm:w-10 sm:h-10 bg-contain bg-center bg-no-repeat";
-                                faviconDiv.style.backgroundImage = `url('${url}')`;
-                                
-                                // プレースホルダーを置き換え
-                                if (container.firstChild) {
-                                    container.replaceChild(faviconDiv, container.firstChild);
-                                }
-                                resolve(true);
-                            } else {
-                                reject();
-                            }
-                        };
-                        
-                        img.onerror = () => reject();
-                        img.src = url;
-                    });
-                    
-                    if (success) break; // 成功したら終了
+                        faviconLoaded = true;
+                        container.innerHTML = '';
+                        container.appendChild(faviconDiv);
+                        console.log(url)
+                        return true;
+                    }
                 } catch (e) {
-                    continue; // 失敗したら次のURLを試す
+                    continue;
                 }
             }
+            return false;
         };
 
         // 非同期でファビコン取得を試みる
-        tryFaviconSequentially().catch(() => {
-            // すべての試行が失敗した場合も既にプレースホルダーが表示されているので何もしない
+        tryAllFavicons().then(success => {
+            if (!success && !faviconLoaded) {
+                // すべての試行が失敗し、かつファビコンが読み込まれていない場合
+                container.innerHTML = '';
+                container.appendChild(placeholder.cloneNode(true));
+            }
+        }).catch(() => {
+            if (!faviconLoaded) {
+                // エラーが発生し、かつファビコンが読み込まれていない場合
+                container.innerHTML = '';
+                container.appendChild(placeholder.cloneNode(true));
+            }
         });
 
     } catch (e) {
-        console.warn("Invalid URL, using placeholder:", shortcut.url);
-        // エラーの場合も既にプレースホルダーが表示されているので何もしない
+        console.warn("Invalid URL:", shortcut.url);
     }
 
     return container;
 }
 
-function getFaviconUrls(domain) {
-    return [
-        `https://${domain}/favicon.ico`,
-        `https://${domain}/apple-touch-icon.png`,
-        `https://${domain}/apple-touch-icon-precomposed.png`,
-        `https://icons.duckduckgo.com/ip3/${domain}.ico`
-    ];
-}
-
-// renderShortcuts 関数内で、ファビコン関連の部分を以下のように変更してください:
 function renderShortcuts() {
     shortcutGrid.innerHTML = '';
     const shortcuts = getShortcuts();
