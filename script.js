@@ -22,6 +22,7 @@ const exportBtn = document.getElementById('exportBtn');
 const importBtnTrigger = document.getElementById('importBtnTrigger');
 const importFileElement = document.getElementById('importFile');
 const toastElement = document.getElementById('toast');
+const sortByClicksBtn = document.getElementById('sortByClicksBtn');
 
 document.getElementById('currentYear').textContent = new Date().getFullYear();
 let draggedItem = null;
@@ -79,7 +80,14 @@ window.onclick = (event) => {
 function getShortcuts() {
     try {
         const shortcuts = JSON.parse(localStorage.getItem('shortcuts'));
-        return Array.isArray(shortcuts) ? shortcuts : [];
+        if (Array.isArray(shortcuts)) {
+            return shortcuts.map(s => ({
+                name: s.name,
+                url: s.url,
+                clicks: typeof s.clicks === 'number' ? s.clicks : 0
+            }));
+        }
+        return [];
     } catch (e) {
         console.error("Error getting shortcuts from localStorage:", e);
         return [];
@@ -231,6 +239,7 @@ function renderShortcuts() {
         card.addEventListener('drop', handleDrop);
         card.addEventListener('dragend', handleDragEnd);
         card.addEventListener('dragleave', handleDragLeave);
+        card.addEventListener('click', () => incrementClicks(index));
 
         // ファビコン要素の作成と追加
         const iconContainer = createFaviconElement(shortcut);
@@ -240,6 +249,11 @@ function renderShortcuts() {
         nameElement.className = "text-gray-700 font-semibold text-xs sm:text-sm break-all";
         nameElement.textContent = shortcut.name;
         card.appendChild(nameElement);
+
+        const clickCount = document.createElement('p');
+        clickCount.className = 'text-gray-500 text-xs';
+        clickCount.textContent = `訪問数: ${shortcut.clicks || 0}`;
+        card.appendChild(clickCount);
 
         const actionBtnContainer = document.createElement('div');
         actionBtnContainer.className = 'action-btn-container';
@@ -315,7 +329,7 @@ addShortcutForm.addEventListener('submit', (e) => {
             displayFormError(addFormErrorMessageContainer, 'このURLは既に追加されています。');
             return; 
         }
-        shortcuts.push({ name, url });
+        shortcuts.push({ name, url, clicks: 0 });
         saveShortcuts(shortcuts);
         renderShortcuts();
         addShortcutForm.reset();
@@ -348,7 +362,8 @@ editShortcutForm.addEventListener('submit', (e) => {
              displayFormError(editFormErrorMessageContainer, 'このURLは他のショートカットで既に使用されています。');
             return;
         }
-        shortcuts[index] = { name, url };
+        const currentClicks = shortcuts[index].clicks || 0;
+        shortcuts[index] = { name, url, clicks: currentClicks };
         saveShortcuts(shortcuts);
         renderShortcuts();
         editShortcutForm.reset();
@@ -364,6 +379,14 @@ function deleteShortcut(index) {
     saveShortcuts(shortcuts);
     renderShortcuts();
     showToast(`「${deletedShortcutName}」を削除しました。`);
+}
+
+function incrementClicks(index) {
+    const shortcuts = getShortcuts();
+    if (shortcuts[index]) {
+        shortcuts[index].clicks = (shortcuts[index].clicks || 0) + 1;
+        saveShortcuts(shortcuts);
+    }
 }
 
 function handleDragStart(e) {
@@ -434,6 +457,14 @@ importBtnTrigger.addEventListener('click', () => {
     importFileElement.click();
 });
 
+sortByClicksBtn.addEventListener('click', () => {
+    const shortcuts = getShortcuts();
+    shortcuts.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+    saveShortcuts(shortcuts);
+    renderShortcuts();
+    showToast('クリック数順に並び替えました。');
+});
+
 importFileElement.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -443,6 +474,11 @@ importFileElement.addEventListener('change', (event) => {
                 const importedShortcuts = JSON.parse(e.target.result);
                 if (Array.isArray(importedShortcuts) && importedShortcuts.every(item => typeof item.name === 'string' && typeof item.url === 'string')) {
                     if (confirm('現在のショートカットをインポートした内容で置き換えますか？（現在の設定は失われます）')) {
+                        importedShortcuts.forEach(item => {
+                            if (typeof item.clicks !== 'number') {
+                                item.clicks = 0;
+                            }
+                        });
                         saveShortcuts(importedShortcuts);
                         renderShortcuts();
                         showToast('ショートカットをインポートしました。');
