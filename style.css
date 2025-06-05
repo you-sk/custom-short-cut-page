@@ -1,0 +1,118 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f3f4f6; /* Tailwindのgray-100 */
+}
+.shortcut-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    cursor: grab; /* ドラッグ可能であることを示すカーソル */
+}
+.shortcut-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Tailwindのshadow-lg */
+}
+.shortcut-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+.shortcut-card.drag-over {
+    border: 2px dashed #3b82f6; /* Tailwindのblue-500 */
+}
+/* アイコンプレースホルダーのスタイル */
+.icon-placeholder-display { /* 新しいクラス名 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    /* サイズはJS側でTailwindクラスを使って指定 */
+    /* 角丸はJS側で削除 */
+}
+.action-btn-container {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    display: flex;
+    gap: 4px; /* ボタン間のスペース */
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    z-index: 10;
+}
+.shortcut-card:hover .action-btn-container {
+    opacity: 1;
+}
+.action-btn {
+    background-color: #6b7280; /* Tailwindのgray-500 */
+    color: white;
+    border-radius: 9999px; /* Tailwindのrounded-full */
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+.action-btn.delete {
+    background-color: #ef4444; /* Tailwindのred-500 */
+}
+.action-btn.delete:hover {
+    background-color: #dc2626; /* Tailwindのred-600 */
+}
+.action-btn.edit {
+    background-color: #3b82f6; /* Tailwindのblue-500 */
+}
+.action-btn.edit:hover {
+    background-color: #2563eb; /* Tailwindのblue-600 */
+}
+
+/* モーダルスタイル */
+.modal {
+    display: none; /* 初期状態は非表示 */
+    position: fixed;
+    z-index: 50;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 0.5rem; /* Tailwindのrounded-lg */
+}
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+.close-btn:hover,
+.close-btn:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+#importFile {
+    display: none;
+}
+.toast-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+.toast-message.show {
+    opacity: 1;
+}
