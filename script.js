@@ -95,6 +95,7 @@ function getFaviconUrls(domain) {
         `https://${domain}/favicon.ico`,
         `https://${domain}/apple-touch-icon.png`,
         `https://${domain}/apple-touch-icon-precomposed.png`,
+        // gstatic.com は基本200を返してしまうのでひと工夫する
         `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=64`,
     ];
 }
@@ -151,6 +152,30 @@ function createFaviconElement(shortcut) {
                 try {
                     const validUrl = await tryFavicon(url);
                     if (!faviconLoaded) { // 既に成功していない場合のみ
+                        // gstatic.com由来の時はデフォルトアイコン（16x16の地球マーク）を避ける
+                        if (validUrl.includes('gstatic.com')) {
+                            try {
+                                const img = new Image();
+                                await new Promise((resolve, reject) => {
+                                    img.onload = () => {
+                                        if (img.width <= 16 && img.height <= 16) {
+                                            // console.log('汎用アイコンの可能性があります (サイズが小さい):', validUrl);
+                                            reject(new Error('Possibly generic favicon (small size)'));
+                                        } else {
+                                            // console.log('有効なファビコンを検出:', validUrl, `サイズ: ${img.width}x${img.height}`);
+                                            resolve();
+                                        }
+                                    };
+                                    img.onerror = () => reject(new Error('Image load failed'));
+                                    img.src = validUrl;
+                                });
+
+                            } catch (error) {
+                                // console.warn('gstaticファビコンの検証中にエラー:', error);
+                                continue
+                            }
+                        }
+
                         const faviconDiv = document.createElement('div');
                         faviconDiv.className = "w-8 h-8 sm:w-10 sm:h-10 bg-contain bg-center bg-no-repeat";
                         faviconDiv.style.backgroundImage = `url('${validUrl}')`;
@@ -158,14 +183,11 @@ function createFaviconElement(shortcut) {
                         faviconLoaded = true;
                         container.innerHTML = '';
                         container.appendChild(faviconDiv);
-                        // todo gstaticからの取得の場合、画像のurlをフェッチして(リダイレクト先)をとってみる
-
-
 
                         return true;
                     }
                 } catch (e) {
-                    continue;
+                    // 例外時はそのまま次へ
                 }
             }
             return false;
