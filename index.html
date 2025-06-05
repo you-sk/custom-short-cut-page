@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>カスタムショートカット</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
@@ -296,104 +297,161 @@
             localStorage.setItem('shortcuts', JSON.stringify(shortcuts));
         }
 
-        function renderShortcuts() {
-            shortcutGrid.innerHTML = '';
-            const shortcuts = getShortcuts();
-            shortcuts.forEach((shortcut, index) => {
-                const card = document.createElement('a');
-                card.href = shortcut.url;
-                card.target = "_blank";
-                card.className = "shortcut-card relative bg-white p-4 rounded-xl shadow-md flex flex-col items-center justify-center text-center";
-                card.setAttribute('data-index', index);
-                card.draggable = true;
+function getFaviconUrls(domain) {
+    return [
+        `https://${domain}/favicon.ico`,
+        `https://${domain}/apple-touch-icon.png`,
+        `https://${domain}/apple-touch-icon-precomposed.png`,
+    ];
+}
 
-                card.addEventListener('dragstart', handleDragStart);
-                card.addEventListener('dragover', handleDragOver);
-                card.addEventListener('drop', handleDrop);
-                card.addEventListener('dragend', handleDragEnd);
-                card.addEventListener('dragleave', handleDragLeave);
+function createFaviconElement(shortcut) {
+    const container = document.createElement('div');
+    container.className = "flex justify-center items-center w-full mb-2 sm:mb-3";
 
-                const bgColor = getBackgroundColor(shortcut.name);
-                const initial = shortcut.name.charAt(0).toUpperCase();
-                
-                const tempIconContainer = document.createElement('div');
-                tempIconContainer.className = "flex justify-center items-center w-full mb-2 sm:mb-3";
+    // プレースホルダーを作成
+    const initial = shortcut.name.charAt(0).toUpperCase();
+    const bgColor = getBackgroundColor(shortcut.name);
+    const placeholder = document.createElement('div');
+    placeholder.className = `icon-placeholder-display w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl ${bgColor}`;
+    placeholder.textContent = initial;
+    
+    // プレースホルダーを表示
+    container.appendChild(placeholder);
 
-                const iconPlaceholder = document.createElement('div');
-                // アイコンプレースホルダーのクラス: CSSで基本スタイル、JSでサイズと背景色を指定 (角丸は削除)
-                iconPlaceholder.className = `icon-placeholder-display w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl ${bgColor}`;
-                iconPlaceholder.textContent = initial;
-                
-                const favicon = document.createElement('img');
-                try {
-                    const domainUrl = new URL(shortcut.url);
-                    favicon.src = `https://www.google.com/s2/favicons?domain=${domainUrl.hostname}&sz=64`;
-                } catch (e) {
-                    const colorName = bgColor.replace('bg-', '').replace('-400', '');
-                    favicon.src = `https://placehold.co/64x64/${colorName}/white?text=${initial}`;
-                    console.warn("Invalid URL for favicon, using placeholder:", shortcut.url);
-                }
-                favicon.alt = shortcut.name || "Site Icon";
-                // ファビコンのクラス: サイズ、オブジェクトフィットを指定 (角丸は削除)
-                favicon.className = "w-8 h-8 sm:w-10 sm:h-10 object-contain";
-                
-                let iconDisplayed = false;
+    // フラグを追加して、ファビコンが正常に読み込まれたかを追跡
+    let faviconLoaded = false;
 
-                favicon.onload = () => {
-                    if (!iconDisplayed && card.contains(tempIconContainer)) {
-                        tempIconContainer.innerHTML = ''; 
-                        tempIconContainer.appendChild(favicon);
-                        iconDisplayed = true;
-                    }
-                };
-                favicon.onerror = () => {
-                    if (!iconDisplayed && card.contains(tempIconContainer)) {
-                        tempIconContainer.innerHTML = '';
-                        tempIconContainer.appendChild(iconPlaceholder); // エラー時はプレースホルダーを使用
-                        iconDisplayed = true;
+    try {
+        const domainUrl = new URL(shortcut.url);
+        const faviconUrls = getFaviconUrls(domainUrl.hostname);
+        
+        const tryFavicon = async (url) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let timeout = setTimeout(() => {
+                    reject(new Error('Timeout'));
+                }, 5000); // 5秒タイムアウト
+
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    if (img.width > 1 && img.height > 1 && !url.includes('404')) {
+                        resolve(url);
+                    } else {
+                        reject(new Error('Invalid favicon'));
                     }
                 };
                 
-                tempIconContainer.appendChild(iconPlaceholder); // 初期表示はプレースホルダー
-                
-                card.appendChild(tempIconContainer);
-
-
-                const nameElement = document.createElement('p');
-                nameElement.className = "text-gray-700 font-semibold text-xs sm:text-sm break-all";
-                nameElement.textContent = shortcut.name;
-                card.appendChild(nameElement);
-
-                const actionBtnContainer = document.createElement('div');
-                actionBtnContainer.className = 'action-btn-container';
-
-                const editBtn = document.createElement('button');
-                editBtn.className = 'action-btn edit';
-                editBtn.innerHTML = '<i class="fas fa-pencil-alt text-xs"></i>';
-                editBtn.title = "編集";
-                editBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openEditModal(index);
+                img.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error('Failed to load'));
                 };
-                actionBtnContainer.appendChild(editBtn);
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'action-btn delete';
-                deleteBtn.innerHTML = '<i class="fas fa-times text-xs"></i>';
-                deleteBtn.title = "削除";
-                deleteBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (confirm(`「${shortcut.name}」を削除してもよろしいですか？`)) {
-                        deleteShortcut(index);
-                    }
-                };
-                actionBtnContainer.appendChild(deleteBtn);
-                card.appendChild(actionBtnContainer);
-                shortcutGrid.appendChild(card);
+                img.src = url;
             });
-        }
+        };
+
+        // すべてのURLを順番に試す
+        const tryAllFavicons = async () => {
+            for (const url of faviconUrls) {
+                try {
+                    const validUrl = await tryFavicon(url);
+                    if (!faviconLoaded) { // 既に成功していない場合のみ
+                        const faviconDiv = document.createElement('div');
+                        faviconDiv.className = "w-8 h-8 sm:w-10 sm:h-10 bg-contain bg-center bg-no-repeat";
+                        faviconDiv.style.backgroundImage = `url('${validUrl}')`;
+                        
+                        faviconLoaded = true;
+                        container.innerHTML = '';
+                        container.appendChild(faviconDiv);
+                        console.log(url)
+                        return true;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            return false;
+        };
+
+        // 非同期でファビコン取得を試みる
+        tryAllFavicons().then(success => {
+            if (!success && !faviconLoaded) {
+                // すべての試行が失敗し、かつファビコンが読み込まれていない場合
+                container.innerHTML = '';
+                container.appendChild(placeholder.cloneNode(true));
+            }
+        }).catch(() => {
+            if (!faviconLoaded) {
+                // エラーが発生し、かつファビコンが読み込まれていない場合
+                container.innerHTML = '';
+                container.appendChild(placeholder.cloneNode(true));
+            }
+        });
+
+    } catch (e) {
+        console.warn("Invalid URL:", shortcut.url);
+    }
+
+    return container;
+}
+
+function renderShortcuts() {
+    shortcutGrid.innerHTML = '';
+    const shortcuts = getShortcuts();
+    shortcuts.forEach((shortcut, index) => {
+        const card = document.createElement('a');
+        card.href = shortcut.url;
+        card.target = "_blank";
+        card.className = "shortcut-card relative bg-white p-4 rounded-xl shadow-md flex flex-col items-center justify-center text-center";
+        card.setAttribute('data-index', index);
+        card.draggable = true;
+
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('drop', handleDrop);
+        card.addEventListener('dragend', handleDragEnd);
+        card.addEventListener('dragleave', handleDragLeave);
+
+        // ファビコン要素の作成と追加
+        const iconContainer = createFaviconElement(shortcut);
+        card.appendChild(iconContainer);
+
+        const nameElement = document.createElement('p');
+        nameElement.className = "text-gray-700 font-semibold text-xs sm:text-sm break-all";
+        nameElement.textContent = shortcut.name;
+        card.appendChild(nameElement);
+
+        const actionBtnContainer = document.createElement('div');
+        actionBtnContainer.className = 'action-btn-container';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-btn edit';
+        editBtn.innerHTML = '<i class="fas fa-pencil-alt text-xs"></i>';
+        editBtn.title = "編集";
+        editBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openEditModal(index);
+        };
+        actionBtnContainer.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-btn delete';
+        deleteBtn.innerHTML = '<i class="fas fa-times text-xs"></i>';
+        deleteBtn.title = "削除";
+        deleteBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm(`「${shortcut.name}」を削除してもよろしいですか？`)) {
+                deleteShortcut(index);
+            }
+        };
+        actionBtnContainer.appendChild(deleteBtn);
+        card.appendChild(actionBtnContainer);
+        shortcutGrid.appendChild(card);
+    });
+}
 
         function getBackgroundColor(name) {
             const colors = [
