@@ -12,8 +12,18 @@
 <body class="bg-gray-100 min-h-screen flex flex-col items-center pt-10 px-4">
 
     <header class="mb-8 text-center w-full">
-        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">myShortCuts</h1>
-        <p class="text-gray-600 mt-2 text-sm sm:text-base">お気に入りのサイトを登録・編集・並び替えて、素早くアクセス！</p>
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center justify-center gap-2">
+            <span id="pageTitleDisplay">myShortCuts</span>
+            <button id="editTitleBtn" class="text-gray-500 hover:text-gray-700" title="タイトルを編集">
+                <i class="fas fa-pencil-alt"></i>
+            </button>
+        </h1>
+        <p class="text-gray-600 mt-2 text-sm sm:text-base flex items-center justify-center gap-2">
+            <span id="usageTextDisplay">お気に入りのサイトを登録・編集・並び替えて、素早くアクセス！</span>
+            <button id="editUsageBtn" class="text-gray-500 hover:text-gray-700" title="使い方を編集">
+                <i class="fas fa-pencil-alt"></i>
+            </button>
+        </p>
     </header>
 
     <div class="flex flex-wrap justify-center gap-3 mb-8">
