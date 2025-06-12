@@ -24,6 +24,14 @@ const importFileElement = document.getElementById('importFile');
 const toastElement = document.getElementById('toast');
 const sortByClicksBtn = document.getElementById('sortByClicksBtn');
 
+// タイトル・使い方関連
+const pageTitleDisplay = document.getElementById('pageTitleDisplay');
+const usageTextDisplay = document.getElementById('usageTextDisplay');
+const editTitleBtn = document.getElementById('editTitleBtn');
+const editUsageBtn = document.getElementById('editUsageBtn');
+const DEFAULT_TITLE = 'myShortCuts';
+const DEFAULT_USAGE = 'お気に入りのサイトを登録・編集・並び替えて、素早くアクセス！';
+
 document.getElementById('currentYear').textContent = new Date().getFullYear();
 let draggedItem = null;
 
@@ -34,6 +42,36 @@ function showToast(message, duration = 3000) {
         toastElement.classList.remove('show');
     }, duration);
 }
+
+// --- タイトル・使い方処理 ---
+function loadTitleAndUsage() {
+    const storedTitle = localStorage.getItem('pageTitle') || DEFAULT_TITLE;
+    const storedUsage = localStorage.getItem('usageText') || DEFAULT_USAGE;
+    pageTitleDisplay.textContent = storedTitle;
+    usageTextDisplay.textContent = storedUsage;
+    document.title = storedTitle;
+}
+
+editTitleBtn.addEventListener('click', () => {
+    const current = pageTitleDisplay.textContent;
+    const newTitle = prompt('タイトルを入力してください', current);
+    if (newTitle !== null) {
+        const finalTitle = newTitle.trim() || DEFAULT_TITLE;
+        pageTitleDisplay.textContent = finalTitle;
+        document.title = finalTitle;
+        localStorage.setItem('pageTitle', finalTitle);
+    }
+});
+
+editUsageBtn.addEventListener('click', () => {
+    const current = usageTextDisplay.textContent;
+    const newUsage = prompt('使い方を入力してください', current);
+    if (newUsage !== null) {
+        const finalUsage = newUsage.trim() || DEFAULT_USAGE;
+        usageTextDisplay.textContent = finalUsage;
+        localStorage.setItem('usageText', finalUsage);
+    }
+});
 
 // --- 追加モーダル処理 ---
 openAddModalBtn.onclick = () => {
@@ -497,4 +535,5 @@ importFileElement.addEventListener('change', (event) => {
     }
 });
 
+loadTitleAndUsage();
 renderShortcuts();
