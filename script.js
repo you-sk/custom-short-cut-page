@@ -386,6 +386,17 @@ function incrementClicks(index) {
     if (shortcuts[index]) {
         shortcuts[index].clicks = (shortcuts[index].clicks || 0) + 1;
         saveShortcuts(shortcuts);
+        updateClickCountDisplay(index, shortcuts[index].clicks);
+    }
+}
+
+function updateClickCountDisplay(index, clickCount) {
+    const card = document.querySelector(`[data-index="${index}"]`);
+    if (card) {
+        const clickCountElement = card.querySelector('.text-gray-500.text-xs');
+        if (clickCountElement) {
+            clickCountElement.textContent = `訪問数: ${clickCount}`;
+        }
     }
 }
 
