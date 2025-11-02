@@ -24,6 +24,12 @@ const importFileElement = document.getElementById('importFile');
 const toastElement = document.getElementById('toast');
 const sortByClicksBtn = document.getElementById('sortByClicksBtn');
 
+// 表示設定関連
+const densityLargeBtn = document.getElementById('densityLarge');
+const densityMediumBtn = document.getElementById('densityMedium');
+const densitySmallBtn = document.getElementById('densitySmall');
+const compactModeToggle = document.getElementById('compactModeToggle');
+
 // タイトル・使い方関連
 const pageTitleDisplay = document.getElementById('pageTitleDisplay');
 const usageTextDisplay = document.getElementById('usageTextDisplay');
@@ -35,6 +41,37 @@ const DEFAULT_USAGE = 'お気に入りのサイトを登録・編集・並び替
 document.getElementById('currentYear').textContent = new Date().getFullYear();
 let draggedItem = null;
 
+// グリッド密度設定
+const GRID_DENSITIES = {
+    large: {
+        cols: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6',
+        gap: 'gap-4 sm:gap-6',
+        cardPadding: 'p-4',
+        iconSize: 'w-8 h-8 sm:w-10 sm:h-10',
+        iconSizePlaceholder: 'w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl',
+        nameSize: 'text-xs sm:text-sm',
+        marginBottom: 'mb-2 sm:mb-3'
+    },
+    medium: {
+        cols: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8',
+        gap: 'gap-3 sm:gap-4',
+        cardPadding: 'p-3',
+        iconSize: 'w-7 h-7 sm:w-8 sm:h-8',
+        iconSizePlaceholder: 'w-7 h-7 sm:w-8 sm:h-8 text-base sm:text-lg',
+        nameSize: 'text-xs',
+        marginBottom: 'mb-2'
+    },
+    small: {
+        cols: 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12',
+        gap: 'gap-2 sm:gap-3',
+        cardPadding: 'p-2',
+        iconSize: 'w-6 h-6 sm:w-7 sm:h-7',
+        iconSizePlaceholder: 'w-6 h-6 sm:w-7 sm:h-7 text-sm sm:text-base',
+        nameSize: 'text-xs',
+        marginBottom: 'mb-1 sm:mb-2'
+    }
+};
+
 function showToast(message, duration = 3000) {
     toastElement.textContent = message;
     toastElement.classList.add('show');
@@ -42,6 +79,61 @@ function showToast(message, duration = 3000) {
         toastElement.classList.remove('show');
     }, duration);
 }
+
+// --- 表示設定管理 ---
+function getDisplaySettings() {
+    const density = localStorage.getItem('gridDensity') || 'large';
+    const compactMode = localStorage.getItem('compactMode') === 'true';
+    return { density, compactMode };
+}
+
+function saveDisplaySettings(density, compactMode) {
+    localStorage.setItem('gridDensity', density);
+    localStorage.setItem('compactMode', compactMode.toString());
+}
+
+function applyDisplaySettings() {
+    const { density, compactMode } = getDisplaySettings();
+
+    // グリッド密度を適用
+    const densityConfig = GRID_DENSITIES[density];
+    shortcutGrid.className = `grid ${densityConfig.cols} ${densityConfig.gap} p-4 max-w-7xl w-full`;
+
+    // コンパクトモードを適用
+    if (compactMode) {
+        shortcutGrid.classList.add('compact-mode');
+        compactModeToggle.checked = true;
+    } else {
+        shortcutGrid.classList.remove('compact-mode');
+        compactModeToggle.checked = false;
+    }
+
+    // 密度ボタンのアクティブ状態を更新
+    document.querySelectorAll('.density-btn').forEach(btn => btn.classList.remove('active'));
+    if (density === 'large') densityLargeBtn.classList.add('active');
+    else if (density === 'medium') densityMediumBtn.classList.add('active');
+    else if (density === 'small') densitySmallBtn.classList.add('active');
+}
+
+function setGridDensity(density) {
+    const { compactMode } = getDisplaySettings();
+    saveDisplaySettings(density, compactMode);
+    applyDisplaySettings();
+    renderShortcuts();
+}
+
+function toggleCompactMode() {
+    const { density } = getDisplaySettings();
+    const compactMode = compactModeToggle.checked;
+    saveDisplaySettings(density, compactMode);
+    applyDisplaySettings();
+}
+
+// イベントリスナー
+densityLargeBtn.addEventListener('click', () => setGridDensity('large'));
+densityMediumBtn.addEventListener('click', () => setGridDensity('medium'));
+densitySmallBtn.addEventListener('click', () => setGridDensity('small'));
+compactModeToggle.addEventListener('change', toggleCompactMode);
 
 // --- タイトル・使い方処理 ---
 function loadTitleAndUsage() {
@@ -147,14 +239,17 @@ function getFaviconUrls(domain) {
 }
 
 function createFaviconElement(shortcut) {
+    const { density } = getDisplaySettings();
+    const densityConfig = GRID_DENSITIES[density];
+
     const container = document.createElement('div');
-    container.className = "flex justify-center items-center w-full mb-2 sm:mb-3";
+    container.className = `flex justify-center items-center w-full ${densityConfig.marginBottom}`;
 
     // プレースホルダーを作成
     const initial = shortcut.name.charAt(0).toUpperCase();
     const bgColor = getBackgroundColor(shortcut.name);
     const placeholder = document.createElement('div');
-    placeholder.className = `icon-placeholder-display w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl ${bgColor}`;
+    placeholder.className = `icon-placeholder-display ${densityConfig.iconSizePlaceholder} ${bgColor}`;
     placeholder.textContent = initial;
     
     // プレースホルダーを表示
@@ -223,9 +318,9 @@ function createFaviconElement(shortcut) {
                         }
 
                         const faviconDiv = document.createElement('div');
-                        faviconDiv.className = "w-8 h-8 sm:w-10 sm:h-10 bg-contain bg-center bg-no-repeat";
+                        faviconDiv.className = `${densityConfig.iconSize} bg-contain bg-center bg-no-repeat`;
                         faviconDiv.style.backgroundImage = `url('${validUrl}')`;
-                        
+
                         faviconLoaded = true;
                         container.innerHTML = '';
                         container.appendChild(faviconDiv);
@@ -264,11 +359,14 @@ function createFaviconElement(shortcut) {
 function renderShortcuts() {
     shortcutGrid.innerHTML = '';
     const shortcuts = getShortcuts();
+    const { density } = getDisplaySettings();
+    const densityConfig = GRID_DENSITIES[density];
+
     shortcuts.forEach((shortcut, index) => {
         const card = document.createElement('a');
         card.href = shortcut.url;
         card.target = "_blank";
-        card.className = "shortcut-card relative bg-white p-4 rounded-xl shadow-md flex flex-col items-center justify-center text-center";
+        card.className = `shortcut-card relative bg-white ${densityConfig.cardPadding} rounded-xl shadow-md flex flex-col items-center justify-center text-center`;
         card.setAttribute('data-index', index);
         card.draggable = true;
 
@@ -284,7 +382,7 @@ function renderShortcuts() {
         card.appendChild(iconContainer);
 
         const nameElement = document.createElement('p');
-        nameElement.className = "text-gray-700 font-semibold text-xs sm:text-sm break-all";
+        nameElement.className = `text-gray-700 font-semibold ${densityConfig.nameSize} break-all`;
         nameElement.textContent = shortcut.name;
         card.appendChild(nameElement);
 
@@ -547,4 +645,5 @@ importFileElement.addEventListener('change', (event) => {
 });
 
 loadTitleAndUsage();
+applyDisplaySettings();
 renderShortcuts();

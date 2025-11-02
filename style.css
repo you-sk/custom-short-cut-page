@@ -116,3 +116,10 @@ body {
 .toast-message.show {
     opacity: 1;
 }
+.density-btn.active {
+    background-color: #3b82f6; /* Tailwindのblue-500 */
+    color: white;
+}
+.compact-mode .shortcut-card p.text-gray-500.text-xs {
+    display: none; /* コンパクトモードで訪問数を非表示 */
+}
